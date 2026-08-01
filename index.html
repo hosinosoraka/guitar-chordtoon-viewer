@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guitar ChordToon Viewer</title>
+  <style>
+    :root {
+      --bg-color: #121212;
+      --panel-bg: #1e1e1e;
+      --panel-border: #333333;
+      --text-color: #e0e0e0;
+      --text-muted: #aaaaaa;
+      --accent-color: #ff9800;
+      --accent-root: #ff5252;
+      --button-bg: #2a2a2a;
+      --button-hover: #3a3a3a;
+      --input-bg: #282828;
+      --border-radius: 6px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      user-select: none;
+    }
+
+    /* --------------------------------------------------
+       Header & Toolbars
+    -------------------------------------------------- */
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background-color: var(--panel-bg);
+      padding: 12px 16px;
+      border-radius: var(--border-radius);
+      border: 1px solid var(--panel-border);
+    }
+
+    .app-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--text-color);
+      letter-spacing: 0.5px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .control-group label {
+      font-size: 11px;
+      font-weight: bold;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    select, input[type="text"], button {
+      background-color: var(--input-bg);
+      color: var(--text-color);
+      border: 1px solid var(--panel-border);
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.15s ease;
+    }
+
+    select:focus, input[type="text"]:focus, button:focus {
+      border-color: var(--accent-color);
+    }
+
+    button {
+      cursor: pointer;
+      background-color: var(--button-bg);
+      white-space: nowrap;
+    }
+
+    button:hover {
+      background-color: var(--button-hover);
+    }
+
+    .divider {
+      width: 1px;
+      height: 20px;
+      background-color: var(--panel-border);
+      margin: 0 2px;
+    }
+
+    .btn-print {
+      background-color: #2e5b88;
+      border-color: #4a7bb0;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    .btn-print:hover {
+      background-color: #3b6ea3;
+    }
+
+    .btn-action {
+      background-color: #388e3c;
+      border-color: #4caf50;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    .btn-action:hover {
+      background-color: #2e7d32;
+    }
+
+    /* --------------------------------------------------
+       Vertical Fretboards List
+    -------------------------------------------------- */
+    .fretboard-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .fretboard-card {
+      background-color: var(--panel-bg);
+      border-radius: var(--border-radius);
+      border: 1px solid var(--panel-border);
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 4px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .chord-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--accent-color);
+      color: #111;
+      font-weight: bold;
+      font-size: 13px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .canvas-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 1200px;
+      height: auto;
+    }
+
+    /* --------------------------------------------------
+       Footer & Controls
+    -------------------------------------------------- */
+    .footer-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      background-color: var(--panel-bg);
+      padding: 12px 16px;
+      border-radius: var(--border-radius);
+      border: 1px solid var(--panel-border);
+    }
+
+    .file-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    /* --------------------------------------------------
+       Print Styles
+    -------------------------------------------------- */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+
+      html, body {
+        height: 100%;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      body {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+      }
+
+      header, .footer-toolbar, .card-controls, .no-print {
+        display: none !important;
+      }
+
+      .fretboard-list {
+        width: 100% !important;
+        padding: 0 6mm !important;
+        gap: 0px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+      }
+
+      .fretboard-card {
+        background-color: #ffffff !important;
+        border: none !important;
+        page-break-inside: avoid;
+        padding: 1px 0 !important;
+        box-shadow: none !important;
+        gap: 0px !important;
+      }
+
+      .card-header {
+        padding: 0 !important;
+        margin-bottom: 0px !important;
+      }
+
+      .card-title {
+        color: #000000 !important;
+        font-size: 10px !important;
+      }
+
+      .chord-badge {
+        box-shadow: none !important;
+        border: 1px solid #000 !important;
+        background-color: #eee !important;
+        color: #000 !important;
+        padding: 0px 6px !important;
+        font-size: 10px !important;
+        line-height: 1.2;
+      }
+
+      canvas {
+        max-height: 102px !important;
+        width: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- メインヘッダー＆ツールバー -->
+  <header>
+    <div class="app-title" id="appTitle"></div>
+    <div class="toolbar">
+      <div class="control-group">
+        <label>FRET RANGE</label>
+        <select id="globalStartFret"></select>
+        <label>～</label>
+        <select id="globalEndFret"></select>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="control-group">
+        <label>LABEL</label>
+        <button id="btnLabelMode">Degree (1,3,5)</button>
+      </div>
+
+      <div class="control-group">
+        <label>ACCIDENTAL</label>
+        <button id="btnAccidental">♯ / ♭ Auto</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <button class="btn-print" id="btnPrint">PRINT / PDF</button>
+
+      <div class="divider"></div>
+
+      <div class="control-group">
+        <label>DIATONIC KEY</label>
+        <select id="diatonicKeySelect"></select>
+        <select id="diatonicTypeSelect">
+          <option value="7th">7th (4音)</option>
+          <option value="triad">Triad (3音)</option>
+        </select>
+        <button class="btn-action" id="btnSetDiatonic">SET DIATONIC</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="fretboard-list" id="fretboardList"></div>
+
+  <!-- フッターツールバー -->
+  <div class="footer-toolbar">
+    <div class="file-controls">
+      <button id="btnExportJson">JSON Export</button>
+      <button id="btnImportJson">JSON Import</button>
+      <input type="file" id="fileInput" accept=".json">
+    </div>
+    <div style="font-size: 11px; color: var(--text-muted);" id="appFooter"></div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. Application Info & Global Constants
+       ========================================================================== */
+    const APP_NAME = "Guitar ChordToon Viewer";
+    const APP_VERSION = "1.0.0";
+
+    const NOTE_NAMES_SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const NOTE_NAMES_FLAT  = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+
+    const TUNING = [40, 45, 50, 55, 59, 64];
+
+    const CHORD_DEFINITIONS = {
+      'Maj':   { intervals: [0, 4, 7],     labels: {0:'R', 4:'3', 7:'5'} },
+      'm':     { intervals: [0, 3, 7],     labels: {0:'R', 3:'b3', 7:'5'} },
+      'm-5':   { intervals: [0, 3, 6],     labels: {0:'R', 3:'b3', 6:'b5'} },
+      '7':     { intervals: [0, 4, 7, 10], labels: {0:'R', 4:'3', 7:'5', 10:'b7'} },
+      'Maj7':  { intervals: [0, 4, 7, 11], labels: {0:'R', 4:'3', 7:'5', 11:'7'} },
+      'm7':    { intervals: [0, 3, 7, 10], labels: {0:'R', 3:'b3', 7:'5', 10:'b7'} },
+      'm7b5':  { intervals: [0, 3, 6, 10], labels: {0:'R', 3:'b3', 6:'b5', 10:'b7'} },
+      'dim7':  { intervals: [0, 3, 6, 9],  labels: {0:'R', 3:'b3', 6:'b5', 9:'bb7'} },
+      'aug':   { intervals: [0, 4, 8],     labels: {0:'R', 4:'3', 8:'#5'} },
+      'sus4':  { intervals: [0, 5, 7],     labels: {0:'R', 5:'4', 7:'5'} },
+      '7sus4': { intervals: [0, 5, 7, 10], labels: {0:'R', 5:'4', 7:'5', 10:'b7'} },
+      '6':     { intervals: [0, 4, 7, 9],  labels: {0:'R', 4:'3', 7:'5', 9:'6'} },
+      'm6':    { intervals: [0, 3, 7, 9],  labels: {0:'R', 3:'b3', 7:'5', 9:'6'} },
+      'add9':  { intervals: [0, 2, 4, 7],  labels: {0:'R', 2:'9', 4:'3', 7:'5'} }
+    };
+
+    const DIATONIC_PATTERN_7TH = [
+      { interval: 0,  type: 'Maj7' },
+      { interval: 2,  type: 'm7' },
+      { interval: 4,  type: 'm7' },
+      { interval: 5,  type: 'Maj7' },
+      { interval: 7,  type: '7' },
+      { interval: 9,  type: 'm7' },
+      { interval: 11, type: 'm7b5' },
+      { interval: 0,  type: 'Maj7' }
+    ];
+
+    const DIATONIC_PATTERN_TRIAD = [
+      { interval: 0,  type: 'Maj' },
+      { interval: 2,  type: 'm' },
+      { interval: 4,  type: 'm' },
+      { interval: 5,  type: 'Maj' },
+      { interval: 7,  type: 'Maj' },
+      { interval: 9,  type: 'm' },
+      { interval: 11, type: 'm-5' },
+      { interval: 0,  type: 'Maj' }
+    ];
+
+    let isPrinting = false;
+
+    let state = {
+      globalStartFret: 0,
+      globalEndFret: 24,
+      labelMode: 'degree',
+      accidental: 'auto',
+      slots: Array.from({ length: 8 }, (_, i) => ({
+        id: i + 1,
+        root: 0,
+        type: 'Maj7'
+      }))
+    };
+
+    /* ==========================================================================
+       2. DOM Elements
+       ========================================================================== */
+    const globalStartFretSelect = document.getElementById('globalStartFret');
+    const globalEndFretSelect = document.getElementById('globalEndFret');
+    const btnLabelMode = document.getElementById('btnLabelMode');
+    const btnAccidental = document.getElementById('btnAccidental');
+    const btnPrint = document.getElementById('btnPrint');
+    const fretboardList = document.getElementById('fretboardList');
+    const btnExportJson = document.getElementById('btnExportJson');
+    const btnImportJson = document.getElementById('btnImportJson');
+    const fileInput = document.getElementById('fileInput');
+    const diatonicKeySelect = document.getElementById('diatonicKeySelect');
+    const diatonicTypeSelect = document.getElementById('diatonicTypeSelect');
+    const btnSetDiatonic = document.getElementById('btnSetDiatonic');
+
+    /* ==========================================================================
+       3. Helper Functions
+       ========================================================================== */
+    function getNoteName(noteValue, root) {
+      const pitchClass = noteValue % 12;
+      let useFlat = false;
+
+      if (state.accidental === 'flat') {
+        useFlat = true;
+      } else if (state.accidental === 'auto') {
+        useFlat = [1, 3, 5, 8, 10].includes(root);
+      }
+
+      return useFlat ? NOTE_NAMES_FLAT[pitchClass] : NOTE_NAMES_SHARP[pitchClass];
+    }
+
+    function getChordInterval(noteValue, root, type) {
+      const pitchClass = noteValue % 12;
+      const interval = (pitchClass - root + 12) % 12;
+      const def = CHORD_DEFINITIONS[type];
+
+      if (def && def.intervals.includes(interval)) {
+        return {
+          interval: interval,
+          isRoot: interval === 0,
+          label: def.labels[interval] || `${interval}`
+        };
+      }
+      return null;
+    }
+
+    function initDropdowns() {
+      globalStartFretSelect.innerHTML = '';
+      globalEndFretSelect.innerHTML = '';
+      diatonicKeySelect.innerHTML = '';
+
+      for (let f = 0; f <= 24; f++) {
+        globalStartFretSelect.add(new Option(`${f} Fret`, f, false, f === state.globalStartFret));
+        globalEndFretSelect.add(new Option(`${f} Fret`, f, false, f === state.globalEndFret));
+      }
+
+      NOTE_NAMES_SHARP.forEach((_, idx) => {
+        const majorName = getNoteName(idx, idx);
+        const minorRootIdx = (idx + 9) % 12;
+        const minorName = getNoteName(minorRootIdx, idx);
+        
+        diatonicKeySelect.add(new Option(`Key: ${majorName} (${minorName}m)`, idx));
+      });
+    }
+
+    /* ==========================================================================
+       4. Render Vertical Fretboard Cards & Canvas
+       ========================================================================== */
+    function buildFretboardCards() {
+      fretboardList.innerHTML = '';
+
+      state.slots.forEach((slot, index) => {
+        const card = document.createElement('div');
+        card.className = 'fretboard-card';
+
+        const rootName = getNoteName(slot.root, slot.root);
+
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="card-title">
+              <span>POS ${slot.id}</span>
+              <div class="chord-badge" id="badge_slot_${index}">${rootName}${slot.type}</div>
+            </div>
+            <div class="card-controls no-print">
+              <div class="control-group">
+                <label>ROOT</label>
+                <select class="select-root" data-index="${index}">
+                  ${NOTE_NAMES_SHARP.map((name, idx) => `<option value="${idx}" ${idx === slot.root ? 'selected' : ''}>${getNoteName(idx, idx)}</option>`).join('')}
+                </select>
+              </div>
+              <div class="control-group">
+                <label>TYPE</label>
+                <select class="select-type" data-index="${index}">
+                  ${Object.keys(CHORD_DEFINITIONS).map(typeKey => `<option value="${typeKey}" ${typeKey === slot.type ? 'selected' : ''}>${typeKey}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="canvas-container">
+            <canvas id="canvas_slot_${index}" width="1200" height="200"></canvas>
+          </div>
+        `;
+
+        fretboardList.appendChild(card);
+      });
+
+      document.querySelectorAll('.select-root').forEach(select => {
+        select.addEventListener('change', (e) => {
+          const idx = parseInt(e.target.dataset.index, 10);
+          state.slots[idx].root = parseInt(e.target.value, 10);
+          updateSlotBadge(idx);
+          drawAllFretboards();
+        });
+      });
+
+      document.querySelectorAll('.select-type').forEach(select => {
+        select.addEventListener('change', (e) => {
+          const idx = parseInt(e.target.dataset.index, 10);
+          state.slots[idx].type = e.target.value;
+          updateSlotBadge(idx);
+          drawAllFretboards();
+        });
+      });
+
+      drawAllFretboards();
+    }
+
+    function updateSlotBadge(index) {
+      const slot = state.slots[index];
+      const badge = document.getElementById(`badge_slot_${index}`);
+      if (badge) {
+        const rootName = getNoteName(slot.root, slot.root);
+        badge.textContent = `${rootName}${slot.type}`;
+      }
+    }
+
+    function drawSingleFretboard(canvas, slot) {
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width;
+      const height = canvas.height;
+
+      const startFret = Math.min(state.globalStartFret, state.globalEndFret);
+      const endFret = Math.max(state.globalStartFret, state.globalEndFret);
+      const numFrets = endFret - startFret;
+
+      if (numFrets <= 0) return;
+
+      const numStrings = 6;
+      const paddingLeft = 60;
+      const paddingTop = 24;
+      const paddingRight = 40;
+      const paddingBottom = 24;
+
+      const boardWidth = width - paddingLeft - paddingRight;
+      const boardHeight = height - paddingTop - paddingBottom;
+
+      ctx.clearRect(0, 0, width, height);
+
+      const boardBgColor = isPrinting ? '#ffffff' : '#1a1614';
+      const fretLineColor = isPrinting ? '#222222' : '#555555';
+      const nutColor = isPrinting ? '#666666' : '#d5c8b8';
+      const inlayColor = isPrinting ? '#dddddd' : '#3a3532';
+      const stringColor = isPrinting ? '#333333' : '#88888b';
+      const fretNumberColor = isPrinting ? '#444444' : '#aaaaaa';
+
+      ctx.fillStyle = boardBgColor;
+      ctx.fillRect(paddingLeft, paddingTop, boardWidth, boardHeight);
+
+      if (isPrinting) {
+        ctx.strokeStyle = '#222222';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(paddingLeft, paddingTop, boardWidth, boardHeight);
+      }
+
+      if (startFret === 0) {
+        ctx.fillStyle = nutColor;
+        ctx.fillRect(paddingLeft - 8, paddingTop, 8, boardHeight);
+      }
+
+      const fretWidth = boardWidth / numFrets;
+
+      const singleInlays = [3, 5, 7, 9, 15, 17, 19, 21];
+      const doubleInlays = [12, 24];
+
+      ctx.fillStyle = inlayColor;
+      for (let f = startFret + 1; f <= endFret; f++) {
+        const localFretIndex = f - startFret;
+        const x = paddingLeft + (localFretIndex - 0.5) * fretWidth;
+
+        if (singleInlays.includes(f)) {
+          ctx.beginPath();
+          ctx.arc(x, paddingTop + boardHeight / 2, 5, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (doubleInlays.includes(f)) {
+          ctx.beginPath();
+          ctx.arc(x, paddingTop + boardHeight * 0.25, 4, 0, Math.PI * 2);
+          ctx.arc(x, paddingTop + boardHeight * 0.75, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      for (let i = 0; i <= numFrets; i++) {
+        const currentFretNum = startFret + i;
+        const x = paddingLeft + i * fretWidth;
+        
+        ctx.strokeStyle = (currentFretNum === 0) ? nutColor : fretLineColor;
+        ctx.lineWidth = (currentFretNum === 0) ? 4 : 2;
+        ctx.beginPath();
+        ctx.moveTo(x, paddingTop);
+        ctx.lineTo(x, paddingTop + boardHeight);
+        ctx.stroke();
+
+        if (i > 0) {
+          ctx.fillStyle = fretNumberColor;
+          ctx.font = '12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(currentFretNum, x - fretWidth / 2, height - 6);
+        }
+      }
+
+      const stringGap = boardHeight / (numStrings - 1);
+      for (let s = 0; s < numStrings; s++) {
+        const y = paddingTop + s * stringGap;
+        const stringThickness = 1.2 + (numStrings - 1 - s) * 0.6;
+
+        ctx.strokeStyle = stringColor;
+        ctx.lineWidth = stringThickness;
+        ctx.beginPath();
+        ctx.moveTo(paddingLeft - 8, y);
+        ctx.lineTo(paddingLeft + boardWidth, y);
+        ctx.stroke();
+      }
+
+      for (let s = 0; s < numStrings; s++) {
+        const stringIndex = 5 - s;
+        const openNote = TUNING[stringIndex];
+        const y = paddingTop + s * stringGap;
+
+        for (let f = startFret; f <= endFret; f++) {
+          const noteValue = openNote + f;
+          const chordData = getChordInterval(noteValue, slot.root, slot.type);
+
+          if (chordData) {
+            const localFretIndex = f - startFret;
+            const x = (f === 0 && startFret === 0) 
+              ? paddingLeft - 22 
+              : paddingLeft + (localFretIndex - 0.5) * fretWidth;
+
+            ctx.beginPath();
+            ctx.arc(x, y, 12, 0, Math.PI * 2);
+
+            if (chordData.isRoot) {
+              ctx.fillStyle = isPrinting ? '#e53935' : '#ff5252';
+              ctx.fill();
+              ctx.strokeStyle = isPrinting ? '#000000' : '#ffffff';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            } else {
+              ctx.fillStyle = isPrinting ? '#0288d1' : '#00bcd4';
+              ctx.fill();
+              ctx.strokeStyle = isPrinting ? '#000000' : '#80deea';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
+
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const labelText = state.labelMode === 'degree' 
+              ? chordData.label 
+              : getNoteName(noteValue, slot.root);
+
+            ctx.fillText(labelText, x, y + 0.5);
+          }
+        }
+      }
+    }
+
+    function drawAllFretboards() {
+      state.slots.forEach((slot, index) => {
+        const canvas = document.getElementById(`canvas_slot_${index}`);
+        if (canvas) {
+          drawSingleFretboard(canvas, slot);
+        }
+      });
+    }
+
+    /* ==========================================================================
+       5. Event Handlers & Initialization
+       ========================================================================== */
+    globalStartFretSelect.addEventListener('change', (e) => {
+      state.globalStartFret = parseInt(e.target.value, 10);
+      drawAllFretboards();
+    });
+
+    globalEndFretSelect.addEventListener('change', (e) => {
+      state.globalEndFret = parseInt(e.target.value, 10);
+      drawAllFretboards();
+    });
+
+    btnLabelMode.addEventListener('click', () => {
+      state.labelMode = state.labelMode === 'degree' ? 'note' : 'degree';
+      btnLabelMode.textContent = state.labelMode === 'degree' ? 'Degree (1,3,5)' : 'Note (C,E,G)';
+      drawAllFretboards();
+    });
+
+    btnAccidental.addEventListener('click', () => {
+      if (state.accidental === 'auto') state.accidental = 'sharp';
+      else if (state.accidental === 'sharp') state.accidental = 'flat';
+      else state.accidental = 'auto';
+
+      btnAccidental.textContent = `Accidental: ${state.accidental.toUpperCase()}`;
+      initDropdowns();
+      state.slots.forEach((_, idx) => updateSlotBadge(idx));
+      buildFretboardCards();
+    });
+
+    btnSetDiatonic.addEventListener('click', () => {
+      const keyRoot = parseInt(diatonicKeySelect.value, 10);
+      const isTriad = diatonicTypeSelect.value === 'triad';
+      const pattern = isTriad ? DIATONIC_PATTERN_TRIAD : DIATONIC_PATTERN_7TH;
+      
+      pattern.forEach((item, index) => {
+        if (index < state.slots.length) {
+          state.slots[index].root = (keyRoot + item.interval) % 12;
+          state.slots[index].type = item.type;
+        }
+      });
+
+      buildFretboardCards();
+    });
+
+    btnPrint.addEventListener('click', () => {
+      window.print();
+    });
+
+    window.addEventListener('beforeprint', () => {
+      isPrinting = true;
+      drawAllFretboards();
+    });
+
+    window.addEventListener('afterprint', () => {
+      isPrinting = false;
+      drawAllFretboards();
+    });
+
+    btnExportJson.addEventListener('click', () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `chordtoon_8pos.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    });
+
+    btnImportJson.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const importedState = JSON.parse(event.target.result);
+          if (importedState && Array.isArray(importedState.slots)) {
+            state = { ...state, ...importedState };
+            if (state.slots.length > 8) state.slots = state.slots.slice(0, 8);
+            globalStartFretSelect.value = state.globalStartFret;
+            globalEndFretSelect.value = state.globalEndFret;
+            buildFretboardCards();
+          }
+        } catch (err) {
+          alert('ファイルの読み込みに失敗しました。正しいJSON形式か確認してください。');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    function init() {
+      // ヘッダーとフッターにバージョン付きアプリ名を自動セット
+      const titleText = `${APP_NAME} v${APP_VERSION}`;
+      document.getElementById('appTitle').textContent = titleText;
+      document.getElementById('appFooter').textContent = titleText;
+
+      initDropdowns();
+      buildFretboardCards();
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+    window.addEventListener('resize', drawAllFretboards);
+  </script>
+</body>
+</html>
