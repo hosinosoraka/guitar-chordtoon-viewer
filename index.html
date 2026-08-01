@@ -49,11 +49,35 @@
       border: 1px solid var(--panel-border);
     }
 
+    .app-title-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
     .app-title {
       font-size: 18px;
       font-weight: bold;
       color: var(--text-color);
       letter-spacing: 0.5px;
+    }
+
+    .readme-link {
+      font-size: 0.85rem;
+      font-weight: normal;
+      color: var(--accent-color);
+      text-decoration: none;
+      border: 1px solid var(--panel-border);
+      padding: 2px 8px;
+      border-radius: 4px;
+      background-color: var(--button-bg);
+      transition: background-color 0.15s ease;
+    }
+
+    .readme-link:hover {
+      background-color: var(--button-hover);
     }
 
     .toolbar {
@@ -303,7 +327,15 @@
 
   <!-- メインヘッダー＆ツールバー -->
   <header>
-    <div class="app-title" id="appTitle"></div>
+    <div class="app-title-container">
+      <div class="app-title" id="appTitle"></div>
+      <a href="https://raw.githubusercontent.com/hosinosoraka/guitar-chordtoon-viewer/refs/heads/main/README.md" 
+         target="_blank" 
+         rel="noopener noreferrer" 
+         class="readme-link no-print">
+        📖 README (使い方)
+      </a>
+    </div>
     <div class="toolbar">
       <div class="control-group">
         <label>FRET RANGE</label>
