@@ -1,4 +1,4 @@
-# Guitar ChordToon Viewer (v1.0.0)
+# Guitar ChordToon Viewer (v1.0.1)
 
 ダイアトニックコードの確認やオリジナルコードの配置・閲覧をスムーズに行える、軽量でシンプルなギターコードダイアグラム表示ツールです。
 
