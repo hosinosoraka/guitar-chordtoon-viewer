@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Guitar ChordToon Viewer</title>
+  <!-- jsPDFライブラリの追加 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     :root {
       --bg-color: #121212;
@@ -249,78 +251,6 @@
     #fileInput {
       display: none;
     }
-
-    /* --------------------------------------------------
-       Print Styles
-    -------------------------------------------------- */
-    @media print {
-      @page {
-        size: A4 portrait;
-        margin: 0;
-      }
-
-      html, body {
-        height: 100%;
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-
-      body {
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: center !important;
-        align-items: center !important;
-      }
-
-      header, .footer-toolbar, .card-controls, .no-print {
-        display: none !important;
-      }
-
-      .fretboard-list {
-        width: 100% !important;
-        padding: 0 6mm !important;
-        gap: 0px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: center !important;
-      }
-
-      .fretboard-card {
-        background-color: #ffffff !important;
-        border: none !important;
-        page-break-inside: avoid;
-        padding: 1px 0 !important;
-        box-shadow: none !important;
-        gap: 0px !important;
-      }
-
-      .card-header {
-        padding: 0 !important;
-        margin-bottom: 0px !important;
-      }
-
-      .card-title {
-        color: #000000 !important;
-        font-size: 10px !important;
-      }
-
-      .chord-badge {
-        box-shadow: none !important;
-        border: 1px solid #000 !important;
-        background-color: #eee !important;
-        color: #000 !important;
-        padding: 0px 6px !important;
-        font-size: 10px !important;
-        line-height: 1.2;
-      }
-
-      canvas {
-        max-height: 102px !important;
-        width: auto !important;
-      }
-    }
   </style>
 </head>
 <body>
@@ -391,7 +321,7 @@
        1. Application Info & Global Constants
        ========================================================================== */
     const APP_NAME = "Guitar ChordToon Viewer";
-    const APP_VERSION = "1.0.0";
+    const APP_VERSION = "1.0.1";
 
     const NOTE_NAMES_SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     const NOTE_NAMES_FLAT  = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
@@ -551,7 +481,7 @@
             </div>
           </div>
           <div class="canvas-container">
-            <canvas id="canvas_slot_${index}" width="1200" height="200"></canvas>
+            <canvas id="canvas_slot_${index}" width="1200" height="230"></canvas>
           </div>
         `;
 
@@ -603,7 +533,7 @@
       const paddingLeft = 60;
       const paddingTop = 24;
       const paddingRight = 40;
-      const paddingBottom = 24;
+      const paddingBottom = 48;
 
       const boardWidth = width - paddingLeft - paddingRight;
       const boardHeight = height - paddingTop - paddingBottom;
@@ -668,7 +598,7 @@
           ctx.fillStyle = fretNumberColor;
           ctx.font = '12px sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText(currentFretNum, x - fretWidth / 2, height - 6);
+          ctx.fillText(currentFretNum, x - fretWidth / 2, paddingTop + boardHeight + 24);
         }
       }
 
@@ -787,17 +717,7 @@
     });
 
     btnPrint.addEventListener('click', () => {
-      window.print();
-    });
-
-    window.addEventListener('beforeprint', () => {
-      isPrinting = true;
-      drawAllFretboards();
-    });
-
-    window.addEventListener('afterprint', () => {
-      isPrinting = false;
-      drawAllFretboards();
+      exportVectorPDF();
     });
 
     btnExportJson.addEventListener('click', () => {
@@ -835,13 +755,163 @@
     });
 
     function init() {
-      // ヘッダーとフッターにバージョン付きアプリ名を自動セット
       const titleText = `${APP_NAME} v${APP_VERSION}`;
       document.getElementById('appTitle').textContent = titleText;
       document.getElementById('appFooter').textContent = titleText;
 
       initDropdowns();
       buildFretboardCards();
+    }
+
+    /* ==========================================================================
+       6. Vector PDF Export (jsPDF)
+       ========================================================================== */
+    function drawSingleFretboardToPDF(doc, slot, offsetX, offsetY, scale) {
+      const width = 1200;
+      const height = 230;
+      const startFret = Math.min(state.globalStartFret, state.globalEndFret);
+      const endFret = Math.max(state.globalStartFret, state.globalEndFret);
+      const numFrets = endFret - startFret;
+
+      if (numFrets <= 0) return;
+
+      const numStrings = 6;
+      const paddingLeft = 60;
+      const paddingTop = 24;
+      const paddingRight = 40;
+      const paddingBottom = 48;
+
+      const boardWidth = width - paddingLeft - paddingRight;
+      const boardHeight = height - paddingTop - paddingBottom;
+
+      const cx = (x) => offsetX + (x * scale);
+      const cy = (y) => offsetY + (y * scale);
+      const cs = (s) => s * scale;
+
+      doc.setFillColor('#ffffff');
+      doc.setDrawColor('#222222');
+      doc.setLineWidth(cs(1.5));
+      doc.rect(cx(paddingLeft), cy(paddingTop), cs(boardWidth), cs(boardHeight), 'FD');
+
+      if (startFret === 0) {
+        doc.setFillColor('#666666');
+        doc.rect(cx(paddingLeft - 8), cy(paddingTop), cs(8), cs(boardHeight), 'F');
+      }
+
+      const fretWidth = boardWidth / numFrets;
+      const singleInlays = [3, 5, 7, 9, 15, 17, 19, 21];
+      const doubleInlays = [12, 24];
+
+      doc.setFillColor('#dddddd');
+      for (let f = startFret + 1; f <= endFret; f++) {
+        const localFretIndex = f - startFret;
+        const x = paddingLeft + (localFretIndex - 0.5) * fretWidth;
+
+        if (singleInlays.includes(f)) {
+          doc.circle(cx(x), cy(paddingTop + boardHeight / 2), cs(5), 'F');
+        } else if (doubleInlays.includes(f)) {
+          doc.circle(cx(x), cy(paddingTop + boardHeight * 0.25), cs(4), 'F');
+          doc.circle(cx(x), cy(paddingTop + boardHeight * 0.75), cs(4), 'F');
+        }
+      }
+
+      doc.setTextColor('#444444');
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(cs(12));
+      for (let i = 0; i <= numFrets; i++) {
+        const currentFretNum = startFret + i;
+        const x = paddingLeft + i * fretWidth;
+        
+        doc.setDrawColor(currentFretNum === 0 ? '#666666' : '#222222');
+        doc.setLineWidth(cs(currentFretNum === 0 ? 4 : 2));
+        doc.line(cx(x), cy(paddingTop), cx(x), cy(paddingTop + boardHeight));
+
+        if (i > 0) {
+          doc.text(currentFretNum.toString(), cx(x - fretWidth / 2), cy(paddingTop + boardHeight + 24), { align: 'center' });
+        }
+      }
+
+      const stringGap = boardHeight / (numStrings - 1);
+      doc.setDrawColor('#333333');
+      for (let s = 0; s < numStrings; s++) {
+        const y = paddingTop + s * stringGap;
+        const stringThickness = 1.2 + (numStrings - 1 - s) * 0.6;
+        doc.setLineWidth(cs(stringThickness));
+        doc.line(cx(paddingLeft - 8), cy(y), cx(paddingLeft + boardWidth), cy(y));
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(cs(12));
+      for (let s = 0; s < numStrings; s++) {
+        const stringIndex = 5 - s;
+        const openNote = TUNING[stringIndex];
+        const y = paddingTop + s * stringGap;
+
+        for (let f = startFret; f <= endFret; f++) {
+          const noteValue = openNote + f;
+          const chordData = getChordInterval(noteValue, slot.root, slot.type);
+
+          if (chordData) {
+            const localFretIndex = f - startFret;
+            const x = (f === 0 && startFret === 0) 
+              ? paddingLeft - 22 
+              : paddingLeft + (localFretIndex - 0.5) * fretWidth;
+
+            doc.setFillColor(chordData.isRoot ? '#e53935' : '#0288d1');
+            doc.setDrawColor('#000000');
+            doc.setLineWidth(cs(2));
+            doc.circle(cx(x), cy(y), cs(12), 'FD');
+
+            doc.setTextColor('#000000');
+            const labelText = state.labelMode === 'degree' 
+              ? chordData.label 
+              : getNoteName(noteValue, slot.root);
+
+            doc.text(labelText, cx(x), cy(y) + cs(4.2), { align: 'center' });
+          }
+        }
+      }
+    }
+
+    function exportVectorPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+      
+      const pageWidth = 595.28;
+      const pageHeight = 841.89;
+
+      const marginY = 28;
+      
+      const availableWidth = pageWidth;
+      const scale = availableWidth / 1200; 
+      
+      const titleHeight = 10;
+      const totalAvailableHeight = pageHeight - (marginY * 2);
+      
+      const dynamicScale = Math.min(scale, ((totalAvailableHeight / 8) - titleHeight) / 230);
+      const actualBoardWidth = 1200 * dynamicScale;
+      const actualBoardHeight = 230 * dynamicScale;
+      
+      // 左右中央に配置するためのオフセット計算
+      const marginX = (pageWidth - actualBoardWidth) / 2;
+      
+      const actualSpacing = (totalAvailableHeight - ((titleHeight + actualBoardHeight) * 8)) / 7;
+
+      let currentY = marginY;
+
+      state.slots.forEach((slot, index) => {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        const rootName = getNoteName(slot.root, slot.root);
+        // タイトル部分も指板の左端（marginX）に合わせて描画
+        doc.text(`POS ${slot.id}    ${rootName}${slot.type}`, marginX, currentY + 7);
+
+        drawSingleFretboardToPDF(doc, slot, marginX, currentY + titleHeight, dynamicScale);
+
+        currentY += titleHeight + actualBoardHeight + (index < 7 ? actualSpacing : 0);
+      });
+
+      doc.save("Guitar_ChordToon.pdf");
     }
 
     window.addEventListener('DOMContentLoaded', init);
